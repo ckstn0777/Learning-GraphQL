@@ -1,157 +1,28 @@
-import { ApolloServer } from "apollo-server";
-import { GraphQLScalarType } from "graphql";
+import { ApolloServer } from "apollo-server-express";
+import expressPlayground from "graphql-playground-middleware-express";
 
-let _id = 0;
-const users = [
-  {
-    githubLogin: "ckstn0777",
-    name: "ckstn",
-  },
-  {
-    githubLogin: "gildong0878",
-    name: "gildong hong",
-  },
-  {
-    githubLogin: "incheon0897",
-    name: "incheon univ",
-  },
-];
-const photos = [
-  {
-    id: "1",
-    name: "Test 1",
-    description: "Test Photo 1",
-    category: "GRAPHIC",
-    created: "3-28-1977",
-    githubLogin: "ckstn0777",
-  },
-  {
-    id: "2",
-    name: "Test 2",
-    description: "Test Photo 2",
-    category: "SELFIE",
-    created: "1-2-1985",
-    githubLogin: "gildong0878",
-  },
-  {
-    id: "3",
-    name: "Test 3",
-    description: "Test Photo 3",
-    category: "PORTRAIT",
-    created: "2019/05/16/17:22:10",
-    githubLogin: "gildong0878",
-  },
-];
+import express from "express";
+import resolvers from "./resolvers";
+import { readFileSync } from "fs";
 
-const tags = [
-  { photoID: "1", userID: "ckstn0777" },
-  { photoID: "2", userID: "gildong0878" },
-  { photoID: "2", userID: "incheon0897" },
-  { photoID: "2", userID: "ckstn0777" },
-];
+const app = express();
 
-const typeDefs = `
-    scalar DateTime
-
-    enum PhotoCategory {
-        SELFIE
-        PORTRAIT
-        LANDSCAPE
-        GRAPHIC
-    }
-
-    type Photo {
-        id: ID!
-        url: String!
-        name: String!
-        description: String
-        category: PhotoCategory!
-        created: DateTime!
-        postedBy: User!
-        taggedUsers: [User!]!
-    }
-
-    type User {
-      githubLogin: ID!
-      name: String
-      avatar: String
-      postedPhotos: [Photo!]!
-      inPhotos: [Photo!]!
-    }
-
-    type Query {
-        totalPhotos: Int!
-        allPhotos: [Photo!]!
-    }
-
-    input PostPhotoInput {
-        name: String!
-        category: PhotoCategory=PORTRAIT
-        description: String
-    }
-    
-    type Mutation {
-        postPhoto(input: PostPhotoInput!): Photo!
-    }
-`;
-
-const resolvers = {
-  Query: {
-    totalPhotos: () => photos.length,
-    allPhotos: () => photos,
-  },
-
-  Mutation: {
-    postPhoto: (parent, args) => {
-      _id += 1;
-      const newPhoto = {
-        id: _id,
-        ...args.input,
-        created: new Date(),
-      };
-      photos.push(newPhoto);
-      return newPhoto;
-    },
-  },
-  User: {
-    postedPhotos: (parent) => {
-      // filter : 조건에 만족하는 모든 요소를 모아 새로운 배열로 반환
-      return photos.filter((p) => p.githubLogin === parent.githubLogin);
-    },
-    inPhotos: (parent) => {
-      return tags
-        .filter(tag.userID === parent.id)
-        .map((tag) => tag.photoID)
-        .map((photoID) => photos.find((p) => p.id === photoID));
-    },
-  },
-  Photo: {
-    url: (parent) => `http://yoursite.com/img/${parent.id}.jpg`,
-    postedBy: (parent) => {
-      // find : 조건에 만족하는 첫번째 요소의 값을 반환
-      return users.find((u) => u.githubLogin === parent.githubLogin);
-    },
-    taggedUsers: (parent) => {
-      return tags
-        .filter((tag) => tag.photoID === parent.id)
-        .map((tag) => tag.userID)
-        .map((userID) => users.find((u) => u.githubLogin === userID));
-    },
-  },
-  DateTime: new GraphQLScalarType({
-    name: "DateTime",
-    description: "A valid date time value",
-    parseValue: (value) => new Date(value),
-    serialize: (value) => new Date(value).toISOString(),
-    parseLiteral: (ast) => ast.value,
-  }),
-};
-
+const typeDefs = readFileSync("./typeDefs.graphql", "UTF-8");
 const server = new ApolloServer({
   typeDefs,
   resolvers,
 });
 
-server
-  .listen()
-  .then(({ url }) => console.log(`GraphQL Service running on ${url}`));
+server.applyMiddleware({ app });
+
+app.get("/playground", expressPlayground({ endpoint: "/graphql" }));
+
+app.get("/", (req, res) => {
+  res.end("PhotoShar API에 오신것을 환영합니다.");
+});
+
+app.listen({ port: 4000 }, () => {
+  console.log(
+    `GraphQL Server running http://localhost:4000${server.graphqlPath}`
+  );
+});
