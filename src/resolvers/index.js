@@ -1,47 +1,5 @@
 import { GraphQLScalarType } from "graphql";
 
-let _id = 0;
-const users = [
-  {
-    githubLogin: "ckstn0777",
-    name: "ckstn",
-  },
-  {
-    githubLogin: "gildong0878",
-    name: "gildong hong",
-  },
-  {
-    githubLogin: "incheon0897",
-    name: "incheon univ",
-  },
-];
-const photos = [
-  {
-    id: "1",
-    name: "Test 1",
-    description: "Test Photo 1",
-    category: "GRAPHIC",
-    created: "3-28-1977",
-    githubLogin: "ckstn0777",
-  },
-  {
-    id: "2",
-    name: "Test 2",
-    description: "Test Photo 2",
-    category: "SELFIE",
-    created: "1-2-1985",
-    githubLogin: "gildong0878",
-  },
-  {
-    id: "3",
-    name: "Test 3",
-    description: "Test Photo 3",
-    category: "PORTRAIT",
-    created: "2019/05/16/17:22:10",
-    githubLogin: "gildong0878",
-  },
-];
-
 const tags = [
   { photoID: "1", userID: "ckstn0777" },
   { photoID: "2", userID: "gildong0878" },
@@ -51,8 +9,13 @@ const tags = [
 
 const resolvers = {
   Query: {
-    totalPhotos: () => photos.length,
-    allPhotos: () => photos,
+    totalPhotos: (parent, args, { db }) =>
+      db.collection("photos").estimatedDocumentCount(),
+    allPhotos: (parent, args, { db }) =>
+      db.collection("photos").find().toArray(),
+    totalUsers: (parent, args, { db }) =>
+      db.collection("users").estimatedDocumentCount(),
+    allUsers: (parent, args, { db }) => db.collection("users").find().toArray(),
   },
 
   Mutation: {

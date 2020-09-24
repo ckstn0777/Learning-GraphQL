@@ -4,25 +4,44 @@ import expressPlayground from "graphql-playground-middleware-express";
 import express from "express";
 import resolvers from "./resolvers";
 import { readFileSync } from "fs";
+import { MongoClient } from "mongodb";
 
-const app = express();
-
+require("dotenv").config();
 const typeDefs = readFileSync("./typeDefs.graphql", "UTF-8");
-const server = new ApolloServer({
-  typeDefs,
-  resolvers,
-});
 
-server.applyMiddleware({ app });
+async function start() {
+  const app = express();
+  const MONGO_DB = process.env.DB_HOST;
+  let db;
 
-app.get("/playground", expressPlayground({ endpoint: "/graphql" }));
+  try {
+    const client = await MongoClient.connect(MONGO_DB, {
+      useNewUrlParser: true,
+    });
+    db = client.db();
+  } catch (err) {
+    console.log(err);
+  }
 
-app.get("/", (req, res) => {
-  res.end("PhotoShar API에 오신것을 환영합니다.");
-});
+  const server = new ApolloServer({
+    typeDefs,
+    resolvers,
+    context: { db },
+  });
 
-app.listen({ port: 4000 }, () => {
-  console.log(
-    `GraphQL Server running http://localhost:4000${server.graphqlPath}`
-  );
-});
+  server.applyMiddleware({ app });
+
+  app.get("/playground", expressPlayground({ endpoint: "/graphql" }));
+
+  app.get("/", (req, res) => {
+    res.end("PhotoShar API에 오신것을 환영합니다.");
+  });
+
+  app.listen({ port: 4000 }, () => {
+    console.log(
+      `GraphQL Server running http://localhost:4000${server.graphqlPath}`
+    );
+  });
+}
+
+start();
